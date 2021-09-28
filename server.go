@@ -1,18 +1,37 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
-	"os"
+	"time"
+
+	"github.com/gorilla/mux"
 )
 
-func main() {
-	http.HandleFunc("/running", runningHandler)
-	http.HandleFunc("/stop", stopHandler)
+var done = make(chan struct{})
 
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatal(err)
+func main() {
+	r := mux.NewRouter()
+
+	r.HandleFunc("/running", runningHandler).Methods("GET")
+	r.HandleFunc("/stop", stopHandler).Methods("GET")
+
+	srv := http.Server{
+		Addr:    ":8080",
+		Handler: r,
 	}
+
+	go func() {
+		if err := http.ListenAndServe(":8080", nil); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	<-done
+
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	srv.Shutdown(ctx)
 }
 
 func runningHandler(w http.ResponseWriter, r *http.Request) {
@@ -21,6 +40,5 @@ func runningHandler(w http.ResponseWriter, r *http.Request) {
 
 func stopHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
-
-	go func() { os.Exit(0) }()
+	close(done)
 }
