@@ -4,11 +4,15 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 
 	"github.com/urfave/cli"
 )
+
+type Product interface {
+}
 
 func main() {
 	app := cli.NewApp()
@@ -25,6 +29,34 @@ func main() {
 			Name:   "stop",
 			Usage:  "Stops the server",
 			Action: stopCommand,
+		},
+		{
+			Name:   "new",
+			Usage:  "Creates a new product",
+			Action: newCommand,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:     "url",
+					Usage:    "URL of the product",
+					Required: true,
+				},
+				cli.IntFlag{
+					Name:  "delay",
+					Usage: "Delay (in minutes) to ping the product",
+					Value: 15,
+				},
+			},
+		},
+		{
+			Name:   "list",
+			Usage:  "List all registred products",
+			Action: listCommand,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "vendor",
+					Usage: "Filter the products by vendor",
+				},
+			},
 		},
 	}
 
@@ -64,3 +96,30 @@ func stopCommand(c *cli.Context) error {
 	log.Println("Server stopped.")
 	return nil
 }
+
+func newCommand(c *cli.Context) error {
+	u, err := url.ParseRequestURI(c.String("url"))
+	if err != nil {
+		return err
+	}
+
+	product, err := getProductDetail(u)
+	if err != nil {
+		return err
+	}
+
+	if err := saveProduct(product); err != nil {
+		return err
+	}
+
+	log.Println("Product created.")
+
+	return nil
+}
+
+func listCommand(c *cli.Context) error {
+	return nil
+}
+
+func getProductDetail(u *url.URL) (Product, error)
+func saveProduct(p Product) error
